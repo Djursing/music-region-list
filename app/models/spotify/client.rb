@@ -12,8 +12,13 @@ module Spotify
   # retries once on a 401 in case the token died mid-flight.
   class Client
     API_BASE = "https://api.spotify.com/v1"
-    PAGE_SIZE = 50
+
+    # Page sizes are per endpoint, not global — Spotify tightened several of
+    # them in February 2026 and the caps no longer agree with each other. Asking
+    # for more than an endpoint allows is a 400 "Invalid limit", not a clamp.
     PLAYLIST_PAGE_SIZE = 100
+    ALBUM_TRACKS_PAGE_SIZE = 50   # verified against the live API: 50 ok, 51 rejected
+    ARTIST_ALBUMS_PAGE_SIZE = 10  # reduced to a maximum of 10; the default is 5
 
     def initialize(account)
       @account = account
@@ -66,11 +71,12 @@ module Spotify
     def artist(artist_id) = get("/artists/#{artist_id}")
 
     def artist_albums(artist_id, include_groups: "album,single")
-      paginate("/artists/#{artist_id}/albums", include_groups: include_groups)
+      paginate("/artists/#{artist_id}/albums",
+               limit: ARTIST_ALBUMS_PAGE_SIZE, include_groups: include_groups)
     end
 
     def album_tracks(album_id)
-      paginate("/albums/#{album_id}/tracks")
+      paginate("/albums/#{album_id}/tracks", limit: ALBUM_TRACKS_PAGE_SIZE)
     end
 
     # --- Playback -----------------------------------------------------------
@@ -109,17 +115,17 @@ module Spotify
 
     attr_reader :account
 
-    def paginate(path, **params)
-      return enum_for(:paginate, path, **params) unless block_given?
+    def paginate(path, limit:, **params)
+      return enum_for(:paginate, path, limit: limit, **params) unless block_given?
 
       offset = 0
       loop do
-        page = get(path, **params, limit: PAGE_SIZE, offset: offset)
+        page = get(path, **params, limit: limit, offset: offset)
         entries = page&.dig("items") || []
         entries.each { |entry| yield entry }
 
-        break if entries.size < PAGE_SIZE || page["next"].nil?
-        offset += PAGE_SIZE
+        break if entries.size < limit || page["next"].nil?
+        offset += limit
       end
     end
 

@@ -154,18 +154,48 @@ module Spotify
 
     # --- Catalogue ----------------------------------------------------------
 
-    test "artist_albums and album_tracks paginate" do
-      albums = Array.new(50) { |i| { "id" => "alb#{i}", "name" => "Album #{i}" } }
-      stub_request(:get, "https://api.spotify.com/v1/artists/a1/albums")
-        .with(query: { include_groups: "album,single", limit: 50, offset: 0 })
-        .to_return(status: 200, body: { "items" => albums, "next" => "x" }.to_json,
+    test "artist_albums paginates within the endpoint's limit" do
+      # Spotify caps this endpoint at 10 and returns 400 "Invalid limit" for
+      # anything larger, rather than clamping — so the exact value is asserted
+      # here. A stub matching any query was what let a limit of 50 ship.
+      page = Array.new(10) { |i| { "id" => "alb#{i}", "name" => "Album #{i}" } }
+      first = stub_request(:get, "https://api.spotify.com/v1/artists/a1/albums")
+        .with(query: { include_groups: "album,single", limit: 10, offset: 0 })
+        .to_return(status: 200, body: { "items" => page, "next" => "x" }.to_json,
                    headers: { "Content-Type" => "application/json" })
-      stub_request(:get, "https://api.spotify.com/v1/artists/a1/albums")
-        .with(query: { include_groups: "album,single", limit: 50, offset: 50 })
+      second = stub_request(:get, "https://api.spotify.com/v1/artists/a1/albums")
+        .with(query: { include_groups: "album,single", limit: 10, offset: 10 })
         .to_return(status: 200, body: { "items" => [ { "id" => "albX" } ], "next" => nil }.to_json,
                    headers: { "Content-Type" => "application/json" })
 
-      assert_equal 51, @client.artist_albums("a1").to_a.size
+      assert_equal 11, @client.artist_albums("a1").to_a.size
+      assert_requested first
+      assert_requested second
+    end
+
+    test "album_tracks paginates at the endpoint's limit of 50" do
+      # Verified against the live API: 50 is accepted, 51 is rejected.
+      page = Array.new(50) { |i| { "id" => "t#{i}" } }
+      stub_request(:get, "https://api.spotify.com/v1/albums/alb1/tracks")
+        .with(query: { limit: 50, offset: 0 })
+        .to_return(status: 200, body: { "items" => page, "next" => "x" }.to_json,
+                   headers: { "Content-Type" => "application/json" })
+      stub_request(:get, "https://api.spotify.com/v1/albums/alb1/tracks")
+        .with(query: { limit: 50, offset: 50 })
+        .to_return(status: 200, body: { "items" => [ { "id" => "last" } ], "next" => nil }.to_json,
+                   headers: { "Content-Type" => "application/json" })
+
+      assert_equal 51, @client.album_tracks("alb1").to_a.size
+    end
+
+    test "playlist items are requested a hundred at a time" do
+      stub = stub_request(:get, "https://api.spotify.com/v1/playlists/p1/items")
+        .with(query: { limit: 100, offset: 0 })
+        .to_return(status: 200, body: playlist_items_page([]).to_json,
+                   headers: { "Content-Type" => "application/json" })
+
+      @client.playlist_items("p1").to_a
+      assert_requested stub
     end
   end
 end
