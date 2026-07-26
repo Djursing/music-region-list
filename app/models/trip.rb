@@ -71,4 +71,24 @@ class Trip < ApplicationRecord
   def artist_zone_counts
     zone_assignments.joins(:artist).group("artists.name").count
   end
+
+  # Stable ordering by artist id, so a zone swap or a page reload never
+  # recolours the rest of the map.
+  def artist_palette
+    Trips::Palette.for(zone_assignments.distinct.order(:artist_id).pluck(:artist_id))
+  end
+
+  # kommune_kode => { artist name, colour } — everything the map needs to paint
+  # itself, kept separate from the geometry so the 1.7 MB boundary file can be
+  # cached once and reused across every trip.
+  def map_zones
+    palette = artist_palette
+
+    zone_assignments.includes(:artist).to_h do |assignment|
+      [ assignment.kommune_kode,
+        { artist_id: assignment.artist_id,
+          artist: assignment.artist.name,
+          color: palette[assignment.artist_id] } ]
+    end
+  end
 end

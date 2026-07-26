@@ -1,0 +1,40 @@
+<%= turbo_frame_tag "zone_panel" do %>
+  <div class="space-y-4">
+    <div>
+      <p class="text-xs uppercase tracking-wide text-neutral-500">Kommune</p>
+      <h3 class="text-lg font-semibold"><%= zone.kommune_name %></h3>
+      <p class="mt-1 flex items-center gap-2 text-sm text-neutral-400">
+        <span class="inline-block h-3 w-3 shrink-0 rounded-full"
+              style="background-color: <%= zone_color(zone.artist_id) %>"></span>
+        <%= zone.artist.name %>
+      </p>
+    </div>
+
+    <div class="space-y-2">
+      <p class="text-xs uppercase tracking-wide text-neutral-500">Swap for</p>
+      <ul class="max-h-72 space-y-1 overflow-y-auto pr-1">
+        <% artists.each do |artist| %>
+          <li>
+            <% if artist.id == zone.artist_id %>
+              <span class="flex w-full items-center gap-2 rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-500">
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                      style="background-color: <%= zone_color(artist.id) %>"></span>
+                <%= artist.name %>
+                <span class="ml-auto text-xs">current</span>
+              </span>
+            <% else %>
+              <%= button_to trip_zone_path(trip, zone.kommune_kode),
+                    method: :patch,
+                    params: { artist_id: artist.id },
+                    class: "flex w-full items-center gap-2 rounded-md border border-neutral-800 px-3 py-2 text-left text-sm hover:border-neutral-600" do %>
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                      style="background-color: <%= zone_color(artist.id) %>"></span>
+                <%= artist.name %>
+              <% end %>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  </div>
+<% end %>

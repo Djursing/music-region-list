@@ -1,3 +1,18 @@
+<%= turbo_stream.replace "zone_panel" do %>
+  <%= render "trips/zones/panel", trip: @trip, zone: @zone, artists: @artists %>
+<% end %>
+
+<%# The list beneath the map mirrors the same assignment. %>
 <%= turbo_stream.replace dom_id(@zone) do %>
   <%= render "trips/zones/zone", zone: @zone %>
+<% end %>
+
+<%# Turbo cannot repaint the WebGL canvas, so hand the change to the map
+    controller. This element removes itself once the event is dispatched. %>
+<%= turbo_stream.append "map_events" do %>
+  <div data-controller="zone-broadcast"
+       data-zone-broadcast-kode-value="<%= @zone.kommune_kode %>"
+       data-zone-broadcast-artist-value="<%= @zone.artist.name %>"
+       data-zone-broadcast-artist-id-value="<%= @zone.artist_id %>"
+       data-zone-broadcast-color-value="<%= zone_color(@zone.artist_id) %>"></div>
 <% end %>

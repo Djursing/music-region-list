@@ -41,7 +41,8 @@
       </div>
     </header>
 
-    <main class="mx-auto max-w-3xl px-4 py-8">
+    <%# Pages showing the map opt into a wider column via content_for :wide. %>
+    <main class="mx-auto <%= content_for?(:wide) ? "max-w-6xl" : "max-w-3xl" %> px-4 py-8">
       <% if flash[:notice] %>
         <p class="mb-6 rounded-md border border-emerald-800 bg-emerald-950/60 px-4 py-3 text-sm text-emerald-200"><%= flash[:notice] %></p>
       <% end %>

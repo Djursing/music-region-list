@@ -13,10 +13,18 @@ Rails.application.routes.draw do
     resources :trips, only: :create, shallow: true
   end
 
+  get "geo/kommuner.geojson", to: "geo#kommuner", as: :kommuner_boundaries, defaults: { format: "json" }
+
   resources :trips, only: %i[index show update destroy] do
     # Zones are addressed by kommune code ("0101"), not by record id, since
     # that is what the map hands back when a region is clicked.
-    resources :zones, only: :update, controller: "trips/zones", constraints: { id: /\d{4}/ }
+    resources :zones, only: %i[show update], controller: "trips/zones", constraints: { id: /\d{4}/ }
+  end
+
+  # Development-only. Never drawn in any other environment, and DevController
+  # re-checks the environment on every action.
+  if Rails.env.development?
+    get "dev/sign_in/:spotify_user_id", to: "dev#sign_in_as", as: :dev_sign_in
   end
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
