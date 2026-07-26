@@ -14,3 +14,9 @@
 # ActiveSupport::Inflector.inflections(:en) do |inflect|
 #   inflect.acronym "RESTful"
 # end
+
+# Zeitwerk derives constant names from filenames, so app/models/spotify/oauth.rb
+# would otherwise be expected to define Spotify::Oauth rather than Spotify::OAuth.
+ActiveSupport::Inflector.inflections(:en) do |inflect|
+  inflect.acronym "OAuth"
+end
