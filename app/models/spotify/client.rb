@@ -130,19 +130,6 @@ module Spotify
       true
     end
 
-    # Advances to whatever is next in Spotify's queue. If the queue is empty
-    # this can stop playback entirely, so callers should make sure something is
-    # queued first.
-    def skip_to_next
-      post("/me/player/next")
-      true
-    end
-
-    # What Spotify will play next. There is no way to remove a queued item, so
-    # the only way to skip predictably is to know what is already lined up.
-    def next_in_queue
-      get("/me/player/queue")&.dig("queue", 0, "uri")
-    end
 
     private
 

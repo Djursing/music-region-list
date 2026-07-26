@@ -19,11 +19,14 @@
   <div class="grid gap-3 sm:grid-cols-2">
     <div class="rounded-lg border border-neutral-800 px-4 py-3">
       <p class="text-xs uppercase tracking-wide text-neutral-500">Queued next</p>
+      <%# Only claim something is queued while it genuinely is. This is cleared
+          the moment a track is played directly, so the panel cannot sit there
+          naming a song Spotify has already moved past. %>
       <% if (track = trip.last_queued_track) %>
         <p class="truncate text-sm"><%= track.track_name %></p>
         <p class="truncate text-xs text-neutral-500"><%= track.album_name %></p>
       <% else %>
-        <p class="text-sm text-neutral-500">Nothing yet</p>
+        <p class="text-sm text-neutral-500">Queueing shortly…</p>
       <% end %>
     </div>
 

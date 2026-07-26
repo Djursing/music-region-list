@@ -92,31 +92,23 @@ class Trip < ApplicationRecord
     # the driver is waiting on the result, so it runs inline the first time.
     CrawlCatalogJob.perform_now(artist, account: spotify_account) unless artist.catalog_synced?
 
-    # Spotify's queue is first-in-first-out and nothing can be removed from it,
-    # so skipping predictably means knowing what is already at its head.
-    already_queued = client.next_in_queue
+    choice = Trips::TrackChooser.new(self, artist).alternative(excluding_uri: current_uri)
+    raise Trips::NoTracksAvailable if choice.nil?
 
-    if already_queued.present? && already_queued != current_uri
-      # The loop has lined up a different song for this region. That is exactly
-      # what should play, so just advance to it and queue nothing extra.
-      client.skip_to_next
-    else
-      choice = Trips::TrackChooser.new(self, artist).alternative(excluding_uri: current_uri)
-      raise Trips::NoTracksAvailable if choice.nil?
+    # Play the replacement outright rather than queueing it and advancing.
+    #
+    # Spotify's queue cannot be inspected reliably or edited, so "queue then
+    # skip" meant guessing what sat at its head, and skipping twice to get past
+    # a duplicate raced the player badly enough to run off the end of the queue
+    # and stop the music. Starting playback on a specific track is exactly what
+    # beginning a trip already does, and it says what it means.
+    client.start_playback(uris: choice.track.track_uri)
+    record_play(artist: artist, choice: choice, kommune_kode: kode)
 
-      client.enqueue(choice.track.track_uri)
-      record_play(artist: artist, choice: choice, kommune_kode: kode)
-      update!(last_queued_track_uri: choice.track.track_uri)
-
-      # A queue whose head is the song being skipped needs two advances: one
-      # past the duplicate, one onto the replacement. This is the case that made
-      # skip look broken — the same song simply started again.
-      client.skip_to_next
-      client.skip_to_next if already_queued == current_uri
-    end
-
-    # What was queued is now playing, so the loop has to queue afresh for it.
-    update!(current_kommune_kode: kode, queued_for_track_uri: nil, last_error: nil)
+    # Nothing is queued behind this yet — the loop will see the new track and
+    # queue ahead of it within seconds.
+    update!(current_kommune_kode: kode, queued_for_track_uri: nil,
+            last_queued_track_uri: nil, last_error: nil)
     QueueNextTrackJob.set(wait: 3.seconds).perform_later(self)
     broadcast_hud
   end

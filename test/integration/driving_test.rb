@@ -127,80 +127,57 @@ class DrivingTest < ActionDispatch::IntegrationTest
     })
   end
 
-  def stub_queue_head(uri)
-    stub_request(:get, "https://api.spotify.com/v1/me/player/queue")
-      .with(query: hash_including({}))
-      .to_return(status: 200,
-                 body: { "queue" => (uri ? [ { "uri" => uri } ] : []) }.to_json,
-                 headers: { "Content-Type" => "application/json" })
+  # Captures the track URIs handed to PUT /me/player/play.
+  def stub_play(collector)
+    stub_request(:put, "https://api.spotify.com/v1/me/player/play")
+      .to_return do |req|
+        collector.concat(JSON.parse(req.body)["uris"])
+        { status: 204 }
+      end
   end
 
-  test "skipping queues a replacement when Spotify's queue is empty" do
-    # The loop only queues in the last seconds of a track, so mid-song the queue
-    # is usually empty. Skipping without queueing would stop the music.
+  test "skipping plays a replacement outright" do
+    # Deliberately not "queue then advance": Spotify's queue cannot be inspected
+    # reliably or edited, and advancing twice to get past a duplicate raced the
+    # player badly enough to stop the music.
     trip = active_trip_at(55.6761, 12.5683)
     stub_playing
-    stub_queue_head(nil)
-    queue_stub = stub_request(:post, "https://api.spotify.com/v1/me/player/queue")
-      .with(query: hash_including({})).to_return(status: 204)
-    next_stub = stub_request(:post, "https://api.spotify.com/v1/me/player/next").to_return(status: 204)
+    played = []
+    play_stub = stub_play(played)
 
     post skip_trip_playback_path(trip)
 
-    assert_requested queue_stub, times: 1
-    assert_requested next_stub, times: 1
+    assert_requested play_stub, times: 1
+    assert_equal 1, played.size
     assert_nil trip.reload.queued_for_track_uri
+    assert_nil trip.last_queued_track_uri, "nothing is queued behind a track played directly"
     assert_enqueued_with(job: QueueNextTrackJob)
   end
 
-  test "skipping just advances when a different song is already queued" do
-    # Nothing extra should be queued, or tracks would pile up behind each skip.
-    trip = active_trip_at(55.6761, 12.5683)
-    stub_playing
-    stub_queue_head("spotify:track:something-else")
-    queue_stub = stub_request(:post, "https://api.spotify.com/v1/me/player/queue")
-      .with(query: hash_including({})).to_return(status: 204)
-    next_stub = stub_request(:post, "https://api.spotify.com/v1/me/player/next").to_return(status: 204)
-
-    post skip_trip_playback_path(trip)
-
-    assert_not_requested queue_stub
-    assert_requested next_stub, times: 1
-  end
-
-  test "skipping past a duplicate advances twice so the song actually changes" do
-    # This is the case that made skip look broken: the artist's only track was
-    # queued behind itself, so skipping restarted the same song.
-    trip = active_trip_at(55.6761, 12.5683)
-    stub_playing
-    stub_queue_head("spotify:track:playing")
-    stub_request(:post, "https://api.spotify.com/v1/me/player/queue")
-      .with(query: hash_including({})).to_return(status: 204)
-    next_stub = stub_request(:post, "https://api.spotify.com/v1/me/player/next").to_return(status: 204)
-
-    post skip_trip_playback_path(trip)
-
-    assert_requested next_stub, times: 2
-  end
-
-  test "skipping never offers the song being skipped" do
+  test "skipping never plays the song being skipped" do
     trip = active_trip_at(55.6761, 12.5683)
     artist = trip.artist_for("0101")
     playing = artist.artist_tracks.first
     stub_playing(uri: playing.track_uri)
-    stub_queue_head(nil)
-
-    queued_uris = []
-    stub_request(:post, "https://api.spotify.com/v1/me/player/queue")
-      .with(query: hash_including({}))
-      .to_return { |req| queued_uris << CGI.parse(URI(req.uri).query)["uri"].first; { status: 204 } }
-    stub_request(:post, "https://api.spotify.com/v1/me/player/next").to_return(status: 204)
+    played = []
+    stub_play(played)
 
     post skip_trip_playback_path(trip)
 
-    assert_equal 1, queued_uris.size
-    refute_equal playing.track_uri, queued_uris.first,
-                 "skip queued the very song being skipped"
+    assert_equal 1, played.size
+    refute_equal playing.track_uri, played.first, "skip replayed the very song being skipped"
+  end
+
+  test "skipping does not touch the queue endpoints at all" do
+    # No stubs for /me/player/queue or /me/player/next are registered, so any
+    # request to them would raise. Skip must not depend on queue state.
+    trip = active_trip_at(55.6761, 12.5683)
+    stub_playing
+    stub_play([])
+
+    post skip_trip_playback_path(trip)
+
+    assert_response :redirect
   end
 
   test "skipping fetches the artist's catalogue when the playlist is thin" do
@@ -215,7 +192,6 @@ class DrivingTest < ActionDispatch::IntegrationTest
     refute artist.catalog_synced?
 
     stub_playing(uri: playing.track_uri)
-    stub_queue_head(nil)
     stub_request(:get, "https://api.spotify.com/v1/artists/#{artist.spotify_id}/albums")
       .with(query: hash_including({}))
       .to_return(status: 200, body: { "items" => [ { "id" => "alb1", "name" => "Album" } ], "next" => nil }.to_json,
@@ -227,13 +203,13 @@ class DrivingTest < ActionDispatch::IntegrationTest
         "duration_ms" => 200_000, "artists" => [ { "id" => artist.spotify_id } ]
       } ], "next" => nil }.to_json, headers: { "Content-Type" => "application/json" })
 
-    queue_stub = stub_request(:post, "https://api.spotify.com/v1/me/player/queue")
-      .with(query: { uri: "spotify:track:deepcut" }).to_return(status: 204)
-    stub_request(:post, "https://api.spotify.com/v1/me/player/next").to_return(status: 204)
+    played = []
+    stub_play(played)
 
     post skip_trip_playback_path(trip)
 
-    assert_requested queue_stub, times: 1
+    assert_equal [ "spotify:track:deepcut" ], played,
+                 "skip should play the catalogue track it just fetched"
     assert artist.reload.catalog_synced?
   end
 
