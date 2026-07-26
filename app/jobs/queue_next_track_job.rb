@@ -101,13 +101,7 @@ class QueueNextTrackJob < ApplicationJob
     return reschedule(trip, IDLE_RECHECK) if choice.nil?
 
     trip.spotify_account.client.enqueue(choice.track.track_uri)
-
-    trip.trip_plays.create!(
-      artist: artist,
-      artist_track: choice.track,
-      kommune_kode: kode,
-      queued_at: Time.current
-    ) unless choice.repeat?
+    trip.record_play(artist: artist, choice: choice, kommune_kode: kode)
 
     trip.update!(
       current_kommune_kode: kode,

@@ -60,6 +60,37 @@ class DrivingTest < ActionDispatch::IntegrationTest
     assert_redirected_to drive_trip_path(@trip)
   end
 
+  test "a trip can be restarted when its artist has only one track" do
+    # A short playlist gives some artists a single track. Restarting the trip
+    # picks that same track again, and recording it a second time used to
+    # violate the (trip, artist_track) uniqueness and blow up with a 500.
+    small = @account.playlists.create!(spotify_id: "tiny", name: "Tiny",
+                                       import_status: "imported", track_count: 1)
+    artist = Artist.create!(spotify_id: "solo", name: "Solo Artist")
+    small.playlist_artists.create!(artist: artist, track_count: 1)
+    ArtistTrack.create!(artist: artist, playlist: small, track_uri: "spotify:track:only",
+                        track_name: "Only Song", source: ArtistTrack::PLAYLIST, duration_ms: 200_000)
+
+    post playlist_trips_path(small)
+    trip = Trip.last
+    post trip_locations_path(trip),
+         params: { location: { latitude: 55.6761, longitude: 12.5683, accuracy: 8 } }
+    stub_request(:put, "https://api.spotify.com/v1/me/player/play").to_return(status: 204)
+
+    post trip_playback_path(trip)
+    assert trip.reload.active?
+    assert_equal 1, trip.trip_plays.count
+
+    delete trip_playback_path(trip)
+
+    # The restart must not raise; the single track is simply replayed.
+    post trip_playback_path(trip)
+
+    assert_response :redirect
+    assert trip.reload.active?
+    assert_equal 1, trip.trip_plays.count, "a replayed track should not be recorded twice"
+  end
+
   test "starting without a position tells the driver why" do
     post trip_playback_path(@trip)
 

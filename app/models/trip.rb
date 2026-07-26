@@ -41,13 +41,29 @@ class Trip < ApplicationRecord
       update!(status: ACTIVE, started_at: Time.current, current_kommune_kode: kode,
               idle_since: nil, last_error: nil, queued_for_track_uri: nil,
               last_queued_track_uri: choice.track.track_uri)
-      trip_plays.create!(artist: artist, artist_track: choice.track,
-                         kommune_kode: kode, queued_at: Time.current)
+      record_play(artist: artist, choice: choice, kommune_kode: kode)
     end
 
     QueueNextTrackJob.set(wait: 5.seconds).perform_later(self)
     broadcast_hud
     choice
+  end
+
+  # Records that a track was queued, so it is not chosen again later in the trip.
+  #
+  # A repeat is not recorded: it is already in the history, and re-inserting it
+  # would violate the (trip, artist_track) uniqueness. That happens easily on a
+  # short playlist — an artist with a single track hits it the moment the trip is
+  # restarted. `find_or_create_by` covers the same collision arriving from two
+  # directions at once.
+  def record_play(artist:, choice:, kommune_kode:)
+    return if choice.repeat?
+
+    trip_plays.find_or_create_by!(artist_track_id: choice.track.id) do |play|
+      play.artist = artist
+      play.kommune_kode = kommune_kode
+      play.queued_at = Time.current
+    end
   end
 
   def stop!
