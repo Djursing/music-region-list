@@ -1,0 +1,64 @@
+<%# Broadcast by the queue loop whenever anything changes, so the phone gets
+    updates only when something actually happened rather than polling. %>
+<div id="trip_hud" class="space-y-4">
+  <div class="rounded-xl border border-neutral-800 bg-neutral-900/60 p-5">
+    <p class="text-xs uppercase tracking-wide text-neutral-500">Now in</p>
+    <p class="text-3xl font-semibold tracking-tight">
+      <%= trip.current_kommune&.navn || "Waiting for a location…" %>
+    </p>
+
+    <% if trip.current_artist %>
+      <p class="mt-3 flex items-center gap-2 text-lg">
+        <span class="inline-block h-3 w-3 shrink-0 rounded-full"
+              style="background-color: <%= trip.artist_palette[trip.current_artist.id] %>"></span>
+        <%= trip.current_artist.name %>
+      </p>
+    <% end %>
+  </div>
+
+  <div class="grid gap-3 sm:grid-cols-2">
+    <div class="rounded-lg border border-neutral-800 px-4 py-3">
+      <p class="text-xs uppercase tracking-wide text-neutral-500">Queued next</p>
+      <% if (track = trip.last_queued_track) %>
+        <p class="truncate text-sm"><%= track.track_name %></p>
+        <p class="truncate text-xs text-neutral-500"><%= track.album_name %></p>
+      <% else %>
+        <p class="text-sm text-neutral-500">Nothing yet</p>
+      <% end %>
+    </div>
+
+    <div class="rounded-lg border border-neutral-800 px-4 py-3">
+      <p class="text-xs uppercase tracking-wide text-neutral-500">Position</p>
+      <% if position.nil? %>
+        <p class="text-sm text-neutral-500">No fix yet</p>
+      <% elsif position.live? %>
+        <p class="text-sm text-emerald-300">Live GPS</p>
+      <% elsif position.estimated? %>
+        <%# Being explicit matters: the driver should know the kommune is a
+            projection, not a reading, when the phone stopped reporting. %>
+        <p class="text-sm text-amber-300">Estimated</p>
+        <p class="text-xs text-neutral-500">
+          last fix <%= distance_of_time_in_words(position.fix_age) %> ago
+        </p>
+      <% else %>
+        <p class="text-sm text-amber-400">Position unknown</p>
+        <p class="text-xs text-neutral-500">
+          last fix <%= distance_of_time_in_words(position.fix_age) %> ago
+        </p>
+      <% end %>
+    </div>
+  </div>
+
+  <% if trip.last_error.present? %>
+    <p class="rounded-lg border border-amber-900 bg-amber-950/40 px-4 py-3 text-sm text-amber-100/90">
+      <%= trip.last_error %>
+    </p>
+  <% end %>
+
+  <% if trip.finished? %>
+    <p class="rounded-lg border border-neutral-800 px-4 py-3 text-sm text-neutral-400">
+      This trip has finished.
+      <%= link_to "Back to the map", trip, class: "underline underline-offset-4" %>
+    </p>
+  <% end %>
+</div>

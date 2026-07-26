@@ -1,0 +1,62 @@
+<% content_for :title, "Driving — #{@trip.display_name}" %>
+
+<%= turbo_stream_from @trip %>
+
+<div class="space-y-6"
+     data-controller="driving"
+     data-driving-url-value="<%= trip_locations_path(@trip) %>">
+
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-semibold tracking-tight"><%= @trip.display_name %></h1>
+      <p class="text-sm text-neutral-500"><%= @trip.playlist.display_name %></p>
+    </div>
+
+    <% if @trip.active? %>
+      <%= button_to "Stop", trip_playback_path(@trip), method: :delete,
+            class: "rounded-md border border-neutral-700 px-4 py-2 text-sm hover:border-neutral-500" %>
+    <% else %>
+      <%= button_to "Start", trip_playback_path(@trip), method: :post,
+            class: "rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400" %>
+    <% end %>
+  </div>
+
+  <%= render "trips/hud", trip: @trip, position: @position %>
+
+  <div class="space-y-2 rounded-lg border border-neutral-800 px-4 py-3 text-sm">
+    <div class="flex items-center justify-between gap-4">
+      <span class="text-neutral-500">Location</span>
+      <span data-driving-target="gps" class="text-neutral-400">Starting…</span>
+    </div>
+    <div class="flex items-center justify-between gap-4">
+      <span class="text-neutral-500">Screen</span>
+      <span data-driving-target="wakeLock" class="text-neutral-400">…</span>
+    </div>
+  </div>
+
+  <details class="rounded-lg border border-neutral-800">
+    <summary class="cursor-pointer px-4 py-3 text-sm text-neutral-400">
+      Why keep this screen open?
+    </summary>
+    <div class="space-y-2 border-t border-neutral-800 px-4 py-3 text-sm text-neutral-400">
+      <p>
+        The music keeps playing even if you lock the phone — that part runs on the
+        server and does not need this page.
+      </p>
+      <p>
+        Your <em>location</em> is different. iOS gives web apps no way to read position
+        in the background, so when the screen locks the server falls back to estimating
+        where you are from your last known speed and heading. That holds up well on a
+        motorway and drifts on winding roads.
+      </p>
+      <p>
+        Leaving this open on a mount, with the screen awake, is what keeps the kommune
+        exactly right.
+      </p>
+    </div>
+  </details>
+
+  <p class="text-center">
+    <%= link_to "Back to the map", @trip, class: "text-sm text-neutral-500 underline underline-offset-4 hover:text-neutral-300" %>
+  </p>
+</div>

@@ -4,6 +4,9 @@
 
 import { application } from "./application"
 
+import DrivingController from "./driving_controller"
+application.register("driving", DrivingController)
+
 import MapController from "./map_controller"
 application.register("map", MapController)
 

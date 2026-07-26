@@ -12,6 +12,8 @@
       </p>
     </div>
     <div class="flex shrink-0 gap-2">
+      <%= link_to "Drive", drive_trip_path(@trip),
+            class: "rounded-md bg-emerald-500 px-3 py-1.5 text-sm font-medium text-neutral-950 hover:bg-emerald-400" %>
       <%= button_to "Re-roll", @trip, method: :patch,
             class: "rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:border-neutral-500" %>
       <%= link_to "All trips", trips_path, class: "rounded-md border border-neutral-800 px-3 py-1.5 text-sm text-neutral-400 hover:text-neutral-100" %>

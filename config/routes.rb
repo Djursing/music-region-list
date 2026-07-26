@@ -19,12 +19,21 @@ Rails.application.routes.draw do
     # Zones are addressed by kommune code ("0101"), not by record id, since
     # that is what the map hands back when a region is clicked.
     resources :zones, only: %i[show update], controller: "trips/zones", constraints: { id: /\d{4}/ }
+
+    resources :locations, only: :create, controller: "trips/locations"
+
+    member do
+      get :drive
+    end
+
+    resource :playback, only: %i[create destroy], controller: "trips/playback"
   end
 
   # Development-only. Never drawn in any other environment, and DevController
   # re-checks the environment on every action.
   if Rails.env.development?
-    get "dev/sign_in/:spotify_user_id", to: "dev#sign_in_as", as: :dev_sign_in
+    get  "dev/sign_in/:spotify_user_id", to: "dev#sign_in_as", as: :dev_sign_in
+    post "dev/trips/:trip_id/simulate_drive", to: "dev#simulate_drive", as: :dev_simulate_drive
   end
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

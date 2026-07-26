@@ -25,6 +25,58 @@ class Trip < ApplicationRecord
     name.presence || "Trip of #{created_at.to_date.to_fs(:long)}"
   end
 
+  # Begins the drive: primes Spotify with one track so the queue has something
+  # to attach to, then hands over to the self-scheduling loop.
+  def start!(seed_position: nil)
+    kode = seed_position&.kommune&.kode || current_kommune_kode || trip_locations.most_recent.first&.to_kommune&.kode
+    raise Trips::NoPositionYet if kode.nil?
+
+    artist = artist_for(kode)
+    choice = Trips::TrackChooser.new(self, artist).call
+    raise Trips::NoTracksAvailable if choice.nil?
+
+    spotify_account.client.start_playback(uris: choice.track.track_uri)
+
+    transaction do
+      update!(status: ACTIVE, started_at: Time.current, current_kommune_kode: kode,
+              idle_since: nil, last_error: nil, queued_for_track_uri: nil,
+              last_queued_track_uri: choice.track.track_uri)
+      trip_plays.create!(artist: artist, artist_track: choice.track,
+                         kommune_kode: kode, queued_at: Time.current)
+    end
+
+    QueueNextTrackJob.set(wait: 5.seconds).perform_later(self)
+    broadcast_hud
+    choice
+  end
+
+  def stop!
+    update!(status: FINISHED, ended_at: Time.current)
+    broadcast_hud
+  end
+
+  def current_kommune
+    Geo::KommuneIndex.instance.find(current_kommune_kode) if current_kommune_kode
+  end
+
+  def current_artist = current_kommune_kode && artist_for(current_kommune_kode)
+
+  def last_queued_track
+    ArtistTrack.find_by(track_uri: last_queued_track_uri) if last_queued_track_uri
+  end
+
+  # Pushed to the driving screen whenever the loop changes anything, so the
+  # phone receives updates only when something actually happened rather than
+  # polling for four hours.
+  def broadcast_hud
+    Turbo::StreamsChannel.broadcast_replace_to(
+      self,
+      target: "trip_hud",
+      partial: "trips/hud",
+      locals: { trip: self, position: Trips::PositionResolver.new(self).call }
+    )
+  end
+
   # Deals the playlist's artists across every kommune. Called on creation and
   # again whenever the user asks for a different arrangement, since the map is
   # re-rolled per trip rather than being a fixed musical geography.

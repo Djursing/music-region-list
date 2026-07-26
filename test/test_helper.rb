@@ -9,6 +9,9 @@ WebMock.disable_net_connect!(allow_localhost: true)
 
 module ActiveSupport
   class TestCase
+    # The driving loop is a chain of self-scheduling jobs, so most of what is
+    # worth asserting is about what got enqueued and when.
+    include ActiveJob::TestHelper
     # Deliberately serial. The suite runs in about three seconds; forking one
     # worker per core saves roughly one of those, and in exchange each worker
     # wants its own database. On a cold checkout all of them issue CREATE

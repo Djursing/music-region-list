@@ -9,7 +9,21 @@
 #     priority: 2
 #     schedule: at 5am every day
 
+default: &default
+  # Safety net for the driving loop. QueueNextTrackJob keeps itself alive by
+  # scheduling its own next run, so a single dropped job would end the music
+  # silently. One minute is the finest granularity Solid Queue's cron-based
+  # scheduler offers — which is exactly why the loop schedules itself instead of
+  # relying on this.
+  playback_watchdog:
+    class: PlaybackWatchdogJob
+    schedule: every minute
+
+development:
+  <<: *default
+
 production:
+  <<: *default
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12

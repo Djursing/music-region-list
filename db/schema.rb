@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_26_140000) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_26_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -264,6 +264,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_26_140000) do
     t.string "last_queued_track_uri"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "idle_since"
+    t.string "position_source"
+    t.text "last_error"
     t.index ["playlist_id"], name: "index_trips_on_playlist_id"
     t.index ["spotify_account_id", "status"], name: "index_trips_on_spotify_account_id_and_status"
     t.index ["spotify_account_id"], name: "index_trips_on_spotify_account_id"

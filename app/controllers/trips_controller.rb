@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class TripsController < ApplicationController
-  before_action :set_trip, only: %i[show update destroy]
+  before_action :set_trip, only: %i[show drive update destroy]
 
   def index
     @trips = current_account.trips.includes(:playlist).order(created_at: :desc)
@@ -11,6 +11,12 @@ class TripsController < ApplicationController
     @zone_assignments = @trip.zone_assignments.includes(:artist).to_a
     @artist_counts = @trip.artist_zone_counts.sort_by { |_, count| -count }
     @silent_borders = @trip.silent_borders
+  end
+
+  # The screen used in the car: big current-kommune readout, and the only place
+  # that reports position.
+  def drive
+    @position = Trips::PositionResolver.new(@trip).call
   end
 
   def create
