@@ -30,7 +30,12 @@
         </div>
 
         <% if pool_size.positive? %>
+          <%# This button sits inside the playlist's Turbo Frame, but it
+              navigates to the trip page, which has no such frame. Without
+              targeting _top, Turbo looks for a matching frame in the response,
+              finds none, and replaces the panel with "Content missing". %>
           <%= button_to "Start a trip", playlist_trips_path(playlist), method: :post,
+                form: { data: { turbo_frame: "_top" } },
                 class: "rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400" %>
         <% end %>
       </div>

@@ -1,14 +1,10 @@
-# Async adapter only works within the same process, so for manually triggering cable updates from a console,
-# and seeing results in the browser, you must do so from the web console (running inside the dev process),
-# not a terminal started via bin/rails console! Add "console" to any action or any ERB template view
-# to make the web console appear.
-development:
-  adapter: async
-
-test:
-  adapter: test
-
-production:
+# Development uses solid_cable rather than the async adapter, because async only
+# delivers within a single process. Everything this app broadcasts — playlist
+# import progress, the driving HUD — is broadcast from a job running in the
+# separate `bin/jobs` process, so with the async adapter those updates are
+# silently dropped and the page just sits there. Going through the database
+# means development behaves the same way production does.
+default: &default
   adapter: solid_cable
   # Primary database, not a dedicated cable one — Railway gives us a single
   # Postgres instance. See config/database.yml.
@@ -17,3 +13,12 @@ production:
       writing: primary
   polling_interval: 0.1.seconds
   message_retention: 1.day
+
+development:
+  <<: *default
+
+test:
+  adapter: test
+
+production:
+  <<: *default
