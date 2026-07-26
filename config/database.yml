@@ -1,0 +1,32 @@
+# PostgreSQL configuration.
+#
+# Local development runs Postgres in Docker on port 55432 (see bin/dev-db).
+# Railway injects DATABASE_URL, which Rails merges on top of this file.
+#
+# Note: Rails 8 scaffolds Solid Queue / Cache / Cable into three *separate*
+# databases. Railway gives us one Postgres instance, and pointing several
+# database configs at the same physical database silently skips their schema
+# loads — Solid Queue's tables never got created. So instead there is a single
+# connection here, and the Solid tables are installed as ordinary migrations
+# (db/migrate/2026072611*). config/application.rb points each component at
+# the primary connection to match.
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: <%= ENV.fetch("PGHOST", "localhost") %>
+  port: <%= ENV.fetch("PGPORT", 55432) %>
+  username: <%= ENV.fetch("PGUSER", "postgres") %>
+  password: <%= ENV.fetch("PGPASSWORD", "postgres") %>
+
+development:
+  <<: *default
+  database: music_location_development
+
+test:
+  <<: *default
+  database: music_location_test
+
+production:
+  <<: *default
+  url: <%= ENV["DATABASE_URL"] %>

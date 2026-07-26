@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Local Postgres for development, in Docker.
+#
+# macOS has no Postgres server installed by default (only the libpq client), so
+# development runs one in a container on port 55432 to avoid clashing with any
+# system Postgres on 5432. config/database.yml defaults match these values.
+set -euo pipefail
+
+CONTAINER=music-location-pg
+IMAGE=postgres:18-alpine
+PORT=55432
+
+case "${1:-up}" in
+  up)
+    if [ -n "$(docker ps -q -f name="^${CONTAINER}$")" ]; then
+      echo "${CONTAINER} already running on port ${PORT}"
+    elif [ -n "$(docker ps -aq -f name="^${CONTAINER}$")" ]; then
+      docker start "${CONTAINER}" >/dev/null
+      echo "started existing ${CONTAINER} on port ${PORT}"
+    else
+      docker run -d --name "${CONTAINER}" \
+        -e POSTGRES_USER=postgres \
+        -e POSTGRES_PASSWORD=postgres \
+        -p "${PORT}:5432" \
+        "${IMAGE}" >/dev/null
+      echo "created ${CONTAINER} on port ${PORT}"
+    fi
+
+    printf "waiting for postgres"
+    for _ in $(seq 1 30); do
+      if docker exec "${CONTAINER}" pg_isready -U postgres >/dev/null 2>&1; then
+        echo " ready"
+        exit 0
+      fi
+      printf "."
+      sleep 1
+    done
+    echo " timed out"
+    exit 1
+    ;;
+  down)
+    docker stop "${CONTAINER}" >/dev/null 2>&1 && echo "stopped ${CONTAINER}" || echo "${CONTAINER} not running"
+    ;;
+  psql)
+    docker exec -it "${CONTAINER}" psql -U postgres -d music_location_development
+    ;;
+  destroy)
+    docker rm -f "${CONTAINER}" >/dev/null 2>&1 && echo "removed ${CONTAINER}" || echo "${CONTAINER} does not exist"
+    ;;
+  *)
+    echo "usage: bin/dev-db [up|down|psql|destroy]" >&2
+    exit 1
+    ;;
+esac
