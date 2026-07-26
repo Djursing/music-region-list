@@ -31,8 +31,18 @@ class PlaylistsController < ApplicationController
   end
 
   def destroy
-    @playlist.destroy!
-    redirect_to playlists_path, notice: "Playlist removed."
+    if @playlist.destroy
+      redirect_to playlists_path, notice: "Playlist removed."
+    else
+      # Trips depend on their playlist for zone swaps and track selection, so a
+      # playlist with trips is kept rather than quietly taking them down with
+      # it. Say which trips are in the way instead of failing with a 500.
+      trip_count = @playlist.trips.count
+      redirect_to playlists_path,
+                  alert: "#{@playlist.display_name} is used by " \
+                         "#{helpers.pluralize(trip_count, 'trip')}. Delete " \
+                         "#{trip_count == 1 ? 'it' : 'them'} first, then remove the playlist."
+    end
   end
 
   private

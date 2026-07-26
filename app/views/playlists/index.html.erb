@@ -38,9 +38,13 @@
                 <%= render "playlists/status_line", playlist: playlist %>
               </p>
             </div>
+            <% trips = playlist.trips.count %>
             <%= button_to "Remove", playlist, method: :delete,
                   class: "text-xs text-neutral-500 hover:text-neutral-300",
-                  form: { data: { turbo_confirm: "Remove #{playlist.display_name}?" } } %>
+                  form: { data: { turbo_confirm:
+                    trips.positive? ?
+                      "#{playlist.display_name} is used by #{pluralize(trips, 'trip')} and cannot be removed until those are deleted. Try anyway?" :
+                      "Remove #{playlist.display_name}?" } } %>
           </li>
         <% end %>
       </ul>

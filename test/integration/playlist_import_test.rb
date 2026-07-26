@@ -79,6 +79,31 @@ class PlaylistImportTest < ActionDispatch::IntegrationTest
     assert_select "p", text: /playlists you own or collaborate on/
   end
 
+  test "a playlist with no trips can be removed" do
+    playlist = build_imported_playlist
+
+    assert_difference -> { Playlist.count }, -1 do
+      delete playlist_path(playlist)
+    end
+    assert_redirected_to playlists_path
+  end
+
+  test "removing a playlist a trip depends on is refused, not a 500" do
+    # Trips need their playlist for zone swaps and track selection, so the
+    # association restricts deletion. That refusal must read as a message, not
+    # blow up with RecordNotDestroyed.
+    playlist = build_imported_playlist
+    @account.trips.create!(playlist: playlist)
+
+    assert_no_difference -> { Playlist.count } do
+      delete playlist_path(playlist)
+    end
+
+    assert_redirected_to playlists_path
+    assert_match(/used by 1 trip/i, flash[:alert])
+    assert_match(/delete it first/i, flash[:alert])
+  end
+
   test "one account cannot see another's playlists" do
     other = spotify_account(spotify_user_id: "someone-else")
     theirs = other.playlists.create!(spotify_id: "secret", import_status: "imported")

@@ -1,6 +1,11 @@
 <% if playlist.imported? %>
   <%= pluralize(playlist.playlist_artists.count, "artist") %>
   from <%= pluralize(playlist.track_count, "track") %>
+  <%# Trips keep their playlist alive, so showing the count explains why the
+      Remove button will refuse. %>
+  <% if (trips = playlist.trips.count).positive? %>
+    · used by <%= pluralize(trips, "trip") %>
+  <% end %>
 <% elsif playlist.failed? %>
   <span class="text-amber-400">Import failed</span>
 <% else %>
