@@ -76,6 +76,70 @@ class CrawlCatalogJobTest < ActiveSupport::TestCase
     # No stubs registered, so any HTTP call would have raised.
   end
 
+  test "falls back to searching by name when the artist has no albums" do
+    # Spotify can hold several artist entities under one name, and a playlist
+    # may credit one with no releases attached — its /albums is genuinely empty
+    # while the artist plainly has a catalogue. Searching by name finds the
+    # records regardless of which entity they are filed under.
+    stub_catalog(albums: [], tracks_by_album: {})
+
+    stub_request(:get, "https://api.spotify.com/v1/search")
+      .with(query: hash_including({ "type" => "track" }))
+      .to_return(status: 200, body: { "tracks" => { "items" => [
+        { "uri" => "spotify:track:hit", "name" => "Dubai Drip", "duration_ms" => 143_000,
+          "album" => { "name" => "Dubai Drip" },
+          # A different id for the same artist name — the crux of the problem.
+          "artists" => [ { "id" => "some-other-id", "name" => "Suspekt" } ] }
+      ] } }.to_json, headers: { "Content-Type" => "application/json" })
+
+    CrawlCatalogJob.perform_now(@artist, account: @account)
+
+    assert_equal [ "spotify:track:hit" ], @artist.artist_tracks.pluck(:track_uri)
+    assert @artist.reload.catalog_synced?
+  end
+
+  test "the name fallback ignores tracks by a genuinely different artist" do
+    stub_catalog(albums: [], tracks_by_album: {})
+    stub_request(:get, "https://api.spotify.com/v1/search")
+      .with(query: hash_including({ "type" => "track" }))
+      .to_return(status: 200, body: { "tracks" => { "items" => [
+        { "uri" => "spotify:track:theirs", "name" => "Not Ours", "duration_ms" => 100_000,
+          "album" => { "name" => "Other" }, "artists" => [ { "id" => "x", "name" => "Someone Else" } ] }
+      ] } }.to_json, headers: { "Content-Type" => "application/json" })
+
+    CrawlCatalogJob.perform_now(@artist, account: @account)
+
+    assert_equal 0, @artist.artist_tracks.count
+  end
+
+  test "does not search when the albums crawl already found tracks" do
+    # No search stub is registered, so any search request would raise.
+    stub_catalog(albums: [ { "id" => "alb1", "name" => "Album" } ],
+                 tracks_by_album: { "alb1" => [ catalog_track("t1") ] })
+
+    CrawlCatalogJob.perform_now(@artist, account: @account)
+
+    assert_equal 1, @artist.artist_tracks.count
+  end
+
+  test "does not search when the albums hold only tracks already known" do
+    # The fallback exists for artists with no releases at all. An artist whose
+    # albums contain only songs already imported from the playlist has a
+    # perfectly good catalogue, so searching would be wasted calls — and no
+    # search stub is registered, so attempting one would raise.
+    playlist = @account.playlists.create!(spotify_id: "p1", import_status: "imported")
+    ArtistTrack.create!(artist: @artist, playlist: playlist, track_uri: "spotify:track:t1",
+                        track_name: "Known", source: ArtistTrack::PLAYLIST)
+
+    stub_catalog(albums: [ { "id" => "alb1", "name" => "Album" } ],
+                 tracks_by_album: { "alb1" => [ catalog_track("t1") ] })
+
+    CrawlCatalogJob.perform_now(@artist, account: @account)
+
+    assert_equal 1, @artist.artist_tracks.count
+    assert_equal ArtistTrack::PLAYLIST, @artist.artist_tracks.sole.source
+  end
+
   test "retries later when rate limited rather than losing the crawl" do
     stub_request(:get, "https://api.spotify.com/v1/artists/a1/albums")
       .with(query: hash_including({}))

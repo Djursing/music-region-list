@@ -19,6 +19,7 @@ module Spotify
     PLAYLIST_PAGE_SIZE = 100
     ALBUM_TRACKS_PAGE_SIZE = 50   # verified against the live API: 50 ok, 51 rejected
     ARTIST_ALBUMS_PAGE_SIZE = 10  # reduced to a maximum of 10; the default is 5
+    SEARCH_PAGE_SIZE = 10         # reduced from 50 to 10 in February 2026
 
     def initialize(account)
       @account = account
@@ -77,6 +78,38 @@ module Spotify
 
     def album_tracks(album_id)
       paginate("/albums/#{album_id}/tracks", limit: ALBUM_TRACKS_PAGE_SIZE)
+    end
+
+    # Finds tracks credited to an artist by name.
+    #
+    # Needed because Spotify sometimes holds several artist entities under one
+    # name, and a playlist can credit one that has no releases of its own —
+    # its /albums is genuinely empty while the artist plainly has a catalogue.
+    # Searching by name finds the records regardless of which entity they hang
+    # off. Results are not paged through `paginate`: search nests its items
+    # under a "tracks" key rather than returning a bare paging object.
+    def search_tracks(artist_name, max: 50)
+      return enum_for(:search_tracks, artist_name, max: max) unless block_given?
+
+      offset = 0
+      yielded = 0
+
+      while yielded < max
+        page = get("/search",
+                   q: %(artist:"#{artist_name}"), type: "track",
+                   limit: SEARCH_PAGE_SIZE, offset: offset)
+        items = page&.dig("tracks", "items") || []
+        break if items.empty?
+
+        items.each do |track|
+          yield track
+          yielded += 1
+          break if yielded >= max
+        end
+
+        break if items.size < SEARCH_PAGE_SIZE
+        offset += SEARCH_PAGE_SIZE
+      end
     end
 
     # --- Playback -----------------------------------------------------------
