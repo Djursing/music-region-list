@@ -10,6 +10,13 @@ Rails.application.routes.draw do
 
   resources :playlists, only: %i[index show create destroy] do
     resources :artists, only: :update, controller: "playlist_artists"
+    resources :trips, only: :create, shallow: true
+  end
+
+  resources :trips, only: %i[index show update destroy] do
+    # Zones are addressed by kommune code ("0101"), not by record id, since
+    # that is what the map hands back when a region is clicked.
+    resources :zones, only: :update, controller: "trips/zones", constraints: { id: /\d{4}/ }
   end
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

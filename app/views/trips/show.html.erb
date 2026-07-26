@@ -1,0 +1,54 @@
+<% content_for :title, @trip.display_name %>
+
+<div class="space-y-8">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight"><%= @trip.display_name %></h1>
+      <p class="mt-1 text-sm text-neutral-500">
+        <%= pluralize(@artist_counts.size, "artist") %> across
+        <%= pluralize(@zone_assignments.size, "kommune") %>
+        · from <%= link_to @trip.playlist.display_name, @trip.playlist, class: "underline underline-offset-4 hover:text-neutral-300" %>
+      </p>
+    </div>
+    <div class="flex shrink-0 gap-2">
+      <%= button_to "Re-roll", @trip, method: :patch,
+            class: "rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:border-neutral-500" %>
+      <%= link_to "All trips", trips_path, class: "rounded-md border border-neutral-800 px-3 py-1.5 text-sm text-neutral-400 hover:text-neutral-100" %>
+    </div>
+  </div>
+
+  <% if @silent_borders.positive? %>
+    <div class="rounded-lg border border-amber-900 bg-amber-950/40 px-4 py-3 text-sm text-amber-100/90">
+      <strong class="font-medium text-amber-200"><%= pluralize(@silent_borders, "kommune") %></strong>
+      share an artist with a neighbour, so those crossings won't change the music.
+      <% if @artist_counts.size < Trips::ZoneAssigner::MINIMUM_POOL_FOR_CLEAN_MAP %>
+        With <%= pluralize(@artist_counts.size, "artist") %> that is unavoidable —
+        <%= Trips::ZoneAssigner::MINIMUM_POOL_FOR_CLEAN_MAP %> is enough to colour the whole map cleanly.
+      <% else %>
+        Re-rolling will usually clear them.
+      <% end %>
+    </div>
+  <% end %>
+
+  <div class="space-y-3">
+    <h2 class="text-sm font-medium uppercase tracking-wide text-neutral-500">Artists on the map</h2>
+    <ul class="grid gap-2 sm:grid-cols-2">
+      <% @artist_counts.each do |name, count| %>
+        <li class="flex items-center justify-between rounded-md border border-neutral-800 px-3 py-2 text-sm">
+          <span class="truncate"><%= name %></span>
+          <span class="shrink-0 text-neutral-500"><%= pluralize(count, "kommune") %></span>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+
+  <div class="space-y-3">
+    <h2 class="text-sm font-medium uppercase tracking-wide text-neutral-500">Every kommune</h2>
+    <p class="text-sm text-neutral-500">
+      The map view lands in the next step; until then this is the same data as a list.
+    </p>
+    <ul id="zone_assignments" class="divide-y divide-neutral-800 rounded-lg border border-neutral-800">
+      <%= render partial: "trips/zones/zone", collection: @zone_assignments.sort_by(&:kommune_name), as: :zone %>
+    </ul>
+  </div>
+</div>

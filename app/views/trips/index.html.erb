@@ -1,0 +1,31 @@
+<% content_for :title, "Trips" %>
+
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-semibold tracking-tight">Trips</h1>
+    <%= link_to "Playlists", playlists_path, class: "text-sm text-neutral-400 underline underline-offset-4 hover:text-neutral-100" %>
+  </div>
+
+  <% if @trips.any? %>
+    <ul class="divide-y divide-neutral-800 rounded-lg border border-neutral-800">
+      <% @trips.each do |trip| %>
+        <li class="flex items-center justify-between px-4 py-3">
+          <div>
+            <%= link_to trip.display_name, trip, class: "font-medium hover:underline underline-offset-4" %>
+            <p class="text-xs text-neutral-500">
+              <%= trip.playlist.display_name %> · <%= trip.status %>
+            </p>
+          </div>
+          <%= button_to "Delete", trip, method: :delete,
+                class: "text-xs text-neutral-500 hover:text-neutral-300",
+                form: { data: { turbo_confirm: "Delete #{trip.display_name}?" } } %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="text-sm text-neutral-400">
+      No trips yet. Import a playlist, then start a trip from it —
+      the artists get dealt across the map fresh each time.
+    </p>
+  <% end %>
+</div>

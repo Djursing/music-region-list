@@ -31,6 +31,8 @@
 
         <% if signed_in? %>
           <div class="flex items-center gap-4 text-sm">
+            <%= link_to "Playlists", playlists_path, class: "text-neutral-400 hover:text-neutral-100" %>
+            <%= link_to "Trips", trips_path, class: "text-neutral-400 hover:text-neutral-100" %>
             <span class="text-neutral-400"><%= current_account.display_name.presence || current_account.spotify_user_id %></span>
             <%= button_to "Disconnect", spotify_sign_out_path, method: :delete,
                   class: "text-neutral-400 underline underline-offset-4 hover:text-neutral-100" %>
