@@ -99,6 +99,12 @@ module Spotify
       true
     end
 
+    # What Spotify will play next. There is no way to remove a queued item, so
+    # the only way to skip predictably is to know what is already lined up.
+    def next_in_queue
+      get("/me/player/queue")&.dig("queue", 0, "uri")
+    end
+
     private
 
     attr_reader :account
