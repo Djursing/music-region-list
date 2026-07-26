@@ -1,3 +1,7 @@
 web: env RUBY_DEBUG_OPEN=true bin/rails server
+# Runs Solid Queue. The driving loop is entirely jobs — the playlist import, the
+# self-scheduling queue-ahead chain, the catalogue crawl and the watchdog — so
+# without this the app looks alive but never queues a single track.
+jobs: bin/jobs
 js: yarn build --watch
 css: yarn build:css --watch

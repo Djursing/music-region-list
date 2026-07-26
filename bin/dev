@@ -1,11 +1,44 @@
 #!/usr/bin/env sh
+# Starts everything needed for development: Postgres, the web server, the job
+# worker, and the asset watchers.
+
+# `bin/dev-db` takes subcommands and `bin/dev` does not, which makes
+# `bin/dev up` an easy slip — and foreman treats a stray argument as a process
+# name to filter on, so it silently starts nothing at all. Catch that here
+# rather than leaving someone staring at an idle terminal.
+case "$1" in
+  up|down|psql|destroy)
+    echo "bin/dev takes no arguments — it starts the whole stack."
+    echo "Did you mean: bin/dev-db $1"
+    exit 1
+    ;;
+  "") ;;
+  *)
+    echo "bin/dev takes no arguments (got '$1')."
+    exit 1
+    ;;
+esac
 
 if gem list --no-installed --exact --silent foreman; then
   echo "Installing foreman..."
   gem install foreman
 fi
 
-# Default to port 3000 if not specified
+# The database lives in Docker, so start it before anything tries to connect.
+# Idempotent — a no-op when it is already running.
+"$(dirname "$0")/dev-db" up || exit 1
+
+# A server killed uncleanly leaves its pidfile behind, and Rails then refuses to
+# start with "A server is already running". Only clear it when the process it
+# names is genuinely gone, so a real running server is still reported.
+PIDFILE="$(dirname "$0")/../tmp/pids/server.pid"
+if [ -f "$PIDFILE" ] && ! kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+  echo "Removing stale pidfile from a previous run"
+  rm -f "$PIDFILE"
+fi
+
+# Default to port 3000 if not specified. Spotify redirect URIs must match
+# exactly, and the registered one is http://127.0.0.1:3000/auth/spotify/callback
 export PORT="${PORT:-3000}"
 
-exec foreman start -f Procfile.dev --env /dev/null "$@"
+exec foreman start -f Procfile.dev --env /dev/null

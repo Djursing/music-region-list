@@ -33,15 +33,37 @@ queue.
 ## Setup
 
 ```bash
-bin/dev-db up          # Postgres in Docker on port 55432
 bundle install
-npm install
+yarn install
 bin/rails db:prepare
 bin/rails test
-bin/dev                # web + jobs + asset watchers
+bin/dev                # starts Postgres, web, jobs and asset watchers
 ```
 
-`bin/dev-db` also takes `down`, `psql`, and `destroy`.
+`bin/dev` takes no arguments — it brings up the whole stack, including the
+Postgres container. `bin/dev-db` manages that container on its own and takes
+`up`, `down`, `psql` or `destroy`.
+
+Then open **http://127.0.0.1:3000** — not `localhost:3000`. Spotify matches
+redirect URIs exactly, and no longer accepts `localhost` at all.
+
+### Spotify credentials
+
+Create an app at [developer.spotify.com](https://developer.spotify.com/dashboard)
+with the redirect URI `http://127.0.0.1:3000/auth/spotify/callback` and the Web
+API enabled (not the Web Playback SDK — this app never plays audio itself). Then:
+
+```bash
+# Avoids putting the secret in shell history or scrollback.
+read -rs -p "Client secret: " S && echo && \
+  SPOTIFY_CLIENT_ID=<your id> SPOTIFY_CLIENT_SECRET="$S" bin/rails spotify:configure && unset S
+
+bin/rails spotify:verify   # confirms the pair works
+```
+
+Finally add yourself under **User Management** in the Spotify dashboard. In
+Development Mode only listed users can authenticate — including the app owner —
+and there are five slots.
 
 ## Geographic data
 
