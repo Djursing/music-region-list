@@ -30,6 +30,20 @@ class SpotifyAuthFlowTest < ActionDispatch::IntegrationTest
     assert params["state"].present?, "state is required to prevent a forged callback"
   end
 
+  test "the sign-in link opts out of Turbo" do
+    # OAuth redirects to accounts.spotify.com. Turbo follows redirects with
+    # fetch, and a cross-origin redirect cannot be followed that way — it fails
+    # as a CORS error with nothing useful on screen. The link has to trigger a
+    # real browser navigation.
+    get root_path
+
+    assert_response :success
+    link = css_select("a[href='#{spotify_auth_path}']").first
+    assert link.present?, "expected a sign-in link on the home page"
+    assert_equal "false", link["data-turbo"],
+                 "sign-in must bypass Turbo or the redirect to Spotify fails as CORS"
+  end
+
   test "a callback with a mismatched state is rejected" do
     get spotify_auth_path  # establishes a state in the session
 

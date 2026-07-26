@@ -11,8 +11,12 @@
   </div>
 
   <div class="rounded-lg border border-neutral-800 bg-neutral-900/50 p-6">
-    <%= button_to spotify_auth_path, method: :get,
-          class: "rounded-full bg-emerald-500 px-6 py-3 font-medium text-neutral-950 hover:bg-emerald-400" do %>
+    <%# data-turbo="false" is required, not stylistic. This redirects to
+        accounts.spotify.com, and Turbo would follow the 302 with fetch — which
+        a cross-origin redirect refuses, failing as a CORS error. Opting out
+        makes it an ordinary browser navigation, which is what OAuth needs. %>
+    <%= link_to spotify_auth_path, data: { turbo: false },
+          class: "inline-block rounded-full bg-emerald-500 px-6 py-3 font-medium text-neutral-950 hover:bg-emerald-400" do %>
       Connect Spotify
     <% end %>
 

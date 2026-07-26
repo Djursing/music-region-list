@@ -53,7 +53,7 @@ class ImportPlaylistJob < ApplicationJob
     # These are all conditions the user can act on — a playlist they don't own,
     # an expired authorisation, a network failure — so the message is stored for
     # display rather than swallowed into a retry loop.
-    playlist.update!(import_status: "failed", import_error: e.message)
+    playlist.update!(import_status: "failed", import_error: user_facing_message(e))
     broadcast(playlist)
 
     # PlaylistNotAccessible is a permanent state of the world, not a transient
@@ -63,6 +63,20 @@ class ImportPlaylistJob < ApplicationJob
   end
 
   private
+
+  # "Spotify rejected the grant (invalid_grant)" is accurate and useless to
+  # whoever is looking at the screen. Translate the failures that have an
+  # obvious next step into that step.
+  def user_facing_message(error)
+    case error
+    when Spotify::ReauthorizationRequired
+      "Your Spotify connection is no longer valid. Disconnect and connect again, then retry the import."
+    when Spotify::PremiumRequired
+      "Spotify refused the request. This app needs a Spotify Premium account."
+    else
+      error.message
+    end
+  end
 
   def broadcast(playlist)
     Turbo::StreamsChannel.broadcast_replace_to(
