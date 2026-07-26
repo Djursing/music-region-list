@@ -1,0 +1,9 @@
+{
+  "ignored_warnings": [
+    {
+      "fingerprint": "166d6bfd650dc6998c0ee13e2da45364ee766175659353dc9e788c7ff1f1e564",
+      "note": "Reviewed and safe. This is the outbound leg of the Spotify OAuth flow. Spotify::OAuth.authorize_url always builds on the AUTHORIZE_URL constant (https://accounts.spotify.com/authorize); no part of the host comes from user input. allow_other_host is required precisely because the destination is a third party. The `state` parameter is generated here and verified on the callback."
+    }
+  ],
+  "brakeman_version": "8.0.5"
+}

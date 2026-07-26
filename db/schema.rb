@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_26_130200) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_26_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -38,6 +38,19 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_26_130200) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["spotify_id"], name: "index_artists_on_spotify_id", unique: true
+  end
+
+  create_table "playlist_artists", force: :cascade do |t|
+    t.bigint "playlist_id", null: false
+    t.bigint "artist_id", null: false
+    t.integer "track_count", default: 0, null: false
+    t.boolean "excluded", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["artist_id"], name: "index_playlist_artists_on_artist_id"
+    t.index ["playlist_id", "artist_id"], name: "index_playlist_artists_on_playlist_id_and_artist_id", unique: true
+    t.index ["playlist_id", "excluded"], name: "index_playlist_artists_on_playlist_id_and_excluded"
+    t.index ["playlist_id"], name: "index_playlist_artists_on_playlist_id"
   end
 
   create_table "playlists", force: :cascade do |t|
@@ -269,6 +282,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_26_130200) do
 
   add_foreign_key "artist_tracks", "artists"
   add_foreign_key "artist_tracks", "playlists"
+  add_foreign_key "playlist_artists", "artists"
+  add_foreign_key "playlist_artists", "playlists"
   add_foreign_key "playlists", "spotify_accounts"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

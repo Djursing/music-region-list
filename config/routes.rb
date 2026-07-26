@@ -1,14 +1,18 @@
 Rails.application.routes.draw do
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
+  root "home#show"
+
+  # Spotify requires an exact redirect URI match, and no longer accepts
+  # "localhost" — register http://127.0.0.1:3000/auth/spotify/callback for
+  # development alongside the production URL.
+  get  "auth/spotify",          to: "spotify_auth#create",   as: :spotify_auth
+  get  "auth/spotify/callback", to: "spotify_auth#callback", as: :spotify_auth_callback
+  delete "auth/spotify",        to: "spotify_auth#destroy",  as: :spotify_sign_out
+
+  resources :playlists, only: %i[index show create destroy] do
+    resources :artists, only: :update, controller: "playlist_artists"
+  end
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
-
-  # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
-  # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
-  # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
-
-  # Defines the root path route ("/")
-  # root "posts#index"
 end

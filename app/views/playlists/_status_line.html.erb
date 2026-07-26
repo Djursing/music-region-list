@@ -1,0 +1,8 @@
+<% if playlist.imported? %>
+  <%= pluralize(playlist.playlist_artists.count, "artist") %>
+  from <%= pluralize(playlist.track_count, "track") %>
+<% elsif playlist.failed? %>
+  <span class="text-amber-400">Import failed</span>
+<% else %>
+  Importing…
+<% end %>

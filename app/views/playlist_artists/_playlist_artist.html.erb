@@ -1,0 +1,15 @@
+<li id="<%= dom_id(playlist_artist) %>"
+    class="flex items-center justify-between gap-4 px-4 py-3 <%= "opacity-40" if playlist_artist.excluded? %>">
+  <div class="min-w-0">
+    <p class="truncate font-medium"><%= playlist_artist.artist.name %></p>
+    <p class="text-xs text-neutral-500">
+      <%= pluralize(playlist_artist.track_count, "track") %> on this playlist
+    </p>
+  </div>
+
+  <%= button_to playlist_artist_path(playlist_artist.playlist, playlist_artist),
+        method: :patch,
+        class: "shrink-0 rounded-full border px-3 py-1 text-xs font-medium #{playlist_artist.excluded? ? 'border-neutral-700 text-neutral-400 hover:text-neutral-100' : 'border-emerald-700 text-emerald-300 hover:bg-emerald-950'}" do %>
+    <%= playlist_artist.excluded? ? "Excluded" : "In pool" %>
+  <% end %>
+</li>

@@ -1,0 +1,17 @@
+<% content_for :title, @playlist.display_name %>
+
+<%= turbo_stream_from @playlist %>
+
+<div class="space-y-8">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight"><%= @playlist.display_name %></h1>
+      <p class="mt-1 text-sm text-neutral-500">
+        <%= render "playlists/status_line", playlist: @playlist %>
+      </p>
+    </div>
+    <%= link_to "All playlists", playlists_path, class: "text-sm text-neutral-400 underline underline-offset-4 hover:text-neutral-100" %>
+  </div>
+
+  <%= render "playlists/details", playlist: @playlist %>
+</div>

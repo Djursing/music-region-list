@@ -1,0 +1,34 @@
+<%# Rendered both on page load and broadcast by ImportPlaylistJob when the
+    import finishes, so it must not depend on controller instance variables. %>
+<%= turbo_frame_tag playlist do %>
+  <% if playlist.in_progress? %>
+    <div class="rounded-lg border border-neutral-800 bg-neutral-900/50 p-6 text-sm text-neutral-400">
+      Reading the playlist from Spotify… this page updates itself when it finishes.
+    </div>
+
+  <% elsif playlist.failed? %>
+    <div class="space-y-2 rounded-lg border border-amber-900 bg-amber-950/40 p-6">
+      <p class="font-medium text-amber-200">Could not import this playlist</p>
+      <p class="text-sm text-amber-100/80"><%= playlist.import_error %></p>
+    </div>
+
+  <% else %>
+    <div class="space-y-4">
+      <div class="space-y-1">
+        <h2 class="text-sm font-medium uppercase tracking-wide text-neutral-500">
+          Artists in the pool
+        </h2>
+        <p class="max-w-prose text-sm text-neutral-400">
+          Artists with a single track are usually guest features. Exclude the ones you
+          would rather not give a whole kommune to — they stay in the playlist, they
+          just won't be dealt onto the map.
+        </p>
+      </div>
+
+      <ul id="playlist_artists" class="divide-y divide-neutral-800 rounded-lg border border-neutral-800">
+        <%= render partial: "playlist_artists/playlist_artist",
+                   collection: playlist.playlist_artists.includes(:artist).by_prominence %>
+      </ul>
+    </div>
+  <% end %>
+<% end %>

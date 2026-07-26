@@ -1,0 +1,24 @@
+<% content_for :title, "Music Region List" %>
+
+<div class="space-y-8">
+  <div class="space-y-4">
+    <h1 class="text-3xl font-semibold tracking-tight">A soundtrack that follows the map</h1>
+    <p class="max-w-prose text-neutral-400">
+      Denmark's 98 kommuner each get an artist from a playlist you choose. As you drive,
+      the next track is queued from whichever artist owns the region you are in — so the
+      music changes when you cross a border.
+    </p>
+  </div>
+
+  <div class="rounded-lg border border-neutral-800 bg-neutral-900/50 p-6">
+    <%= button_to spotify_auth_path, method: :get,
+          class: "rounded-full bg-emerald-500 px-6 py-3 font-medium text-neutral-950 hover:bg-emerald-400" do %>
+      Connect Spotify
+    <% end %>
+
+    <p class="mt-4 text-sm text-neutral-500">
+      Requires Spotify Premium — the playback queue API does not work without it.
+      Your phone keeps playing the music; this app only decides what goes into the queue.
+    </p>
+  </div>
+</div>

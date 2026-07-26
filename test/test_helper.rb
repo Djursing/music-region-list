@@ -9,8 +9,15 @@ WebMock.disable_net_connect!(allow_localhost: true)
 
 module ActiveSupport
   class TestCase
-    # Run tests in parallel with specified workers
-    parallelize(workers: :number_of_processors)
+    # Deliberately serial. The suite runs in about three seconds; forking one
+    # worker per core saves roughly one of those, and in exchange each worker
+    # wants its own database. On a cold checkout all of them issue CREATE
+    # DATABASE at once, Postgres serialises those against template1, and the
+    # contention intermittently hangs or crashes the forked workers.
+    #
+    # Raise this once the suite is slow enough for the parallelism to pay for
+    # itself, and pre-create the worker databases if it misbehaves.
+    parallelize(workers: 1)
 
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
     fixtures :all

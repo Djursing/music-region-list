@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= content_for(:title) || "Music Location" %></title>
+    <title><%= content_for(:title) || "Music Region List" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -22,7 +22,32 @@
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
   </head>
 
-  <body>
-    <%= yield %>
+  <body class="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
+    <header class="border-b border-neutral-800">
+      <div class="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
+        <%= link_to root_path, class: "font-semibold tracking-tight" do %>
+          Music Region List
+        <% end %>
+
+        <% if signed_in? %>
+          <div class="flex items-center gap-4 text-sm">
+            <span class="text-neutral-400"><%= current_account.display_name.presence || current_account.spotify_user_id %></span>
+            <%= button_to "Disconnect", spotify_sign_out_path, method: :delete,
+                  class: "text-neutral-400 underline underline-offset-4 hover:text-neutral-100" %>
+          </div>
+        <% end %>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-3xl px-4 py-8">
+      <% if flash[:notice] %>
+        <p class="mb-6 rounded-md border border-emerald-800 bg-emerald-950/60 px-4 py-3 text-sm text-emerald-200"><%= flash[:notice] %></p>
+      <% end %>
+      <% if flash[:alert] %>
+        <p class="mb-6 rounded-md border border-amber-800 bg-amber-950/60 px-4 py-3 text-sm text-amber-200"><%= flash[:alert] %></p>
+      <% end %>
+
+      <%= yield %>
+    </main>
   </body>
 </html>
