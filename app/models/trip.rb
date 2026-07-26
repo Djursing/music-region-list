@@ -66,6 +66,43 @@ class Trip < ApplicationRecord
     end
   end
 
+  # Moves on from the current song at the driver's request.
+  #
+  # The queue-ahead loop only puts a track in Spotify's queue in the last
+  # seconds of the one playing, so for most of a song Spotify's queue is empty
+  # and skipping would stop playback rather than advance it. So a track for the
+  # current kommune is queued first, then skipped to — which also means the
+  # replacement comes from wherever the car is now, not from where it was when
+  # the previous track was chosen.
+  def skip!
+    client = spotify_account.client
+    state = client.playback_state
+    raise Trips::NotPlaying if state.nil?
+
+    current_uri = state.dig("item", "uri")
+    kode = Trips::PositionResolver.new(self).call&.kommune&.kode || current_kommune_kode
+    raise Trips::NoPositionYet if kode.nil?
+
+    # Only queue if the loop has not already done so for this track, otherwise
+    # the skip would jump over a track that was never heard.
+    if queued_for_track_uri != current_uri
+      artist = artist_for(kode)
+      choice = Trips::TrackChooser.new(self, artist).call
+      raise Trips::NoTracksAvailable if choice.nil?
+
+      client.enqueue(choice.track.track_uri)
+      record_play(artist: artist, choice: choice, kommune_kode: kode)
+      update!(last_queued_track_uri: choice.track.track_uri)
+    end
+
+    client.skip_to_next
+
+    # What was queued is now playing, so the loop has to queue afresh for it.
+    update!(current_kommune_kode: kode, queued_for_track_uri: nil, last_error: nil)
+    QueueNextTrackJob.set(wait: 3.seconds).perform_later(self)
+    broadcast_hud
+  end
+
   def stop!
     update!(status: FINISHED, ended_at: Time.current)
     broadcast_hud

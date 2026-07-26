@@ -91,6 +91,14 @@ module Spotify
       true
     end
 
+    # Advances to whatever is next in Spotify's queue. If the queue is empty
+    # this can stop playback entirely, so callers should make sure something is
+    # queued first.
+    def skip_to_next
+      post("/me/player/next")
+      true
+    end
+
     private
 
     attr_reader :account

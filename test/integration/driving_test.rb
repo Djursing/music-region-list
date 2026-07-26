@@ -120,6 +120,68 @@ class DrivingTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller='driving']"
   end
 
+  test "skipping queues a replacement before advancing" do
+    # The loop only queues in the last seconds of a track, so mid-song Spotify's
+    # queue is empty. Skipping without queueing first would stop the music
+    # instead of moving it on.
+    trip = active_trip_at(55.6761, 12.5683)
+
+    stub_spotify(:get, "/me/player", body: {
+      "is_playing" => true, "progress_ms" => 30_000,
+      "item" => { "uri" => "spotify:track:playing", "duration_ms" => 200_000 }
+    })
+    queue_stub = stub_request(:post, "https://api.spotify.com/v1/me/player/queue")
+      .with(query: hash_including({})).to_return(status: 204)
+    next_stub = stub_request(:post, "https://api.spotify.com/v1/me/player/next")
+      .to_return(status: 204)
+
+    post skip_trip_playback_path(trip)
+
+    assert_requested queue_stub, times: 1
+    assert_requested next_stub, times: 1
+    assert_nil trip.reload.queued_for_track_uri, "the queued track is now playing"
+    assert_enqueued_with(job: QueueNextTrackJob)
+  end
+
+  test "skipping does not double-queue when the loop already queued" do
+    # Otherwise the skip would jump straight over a track that was never heard.
+    trip = active_trip_at(55.6761, 12.5683)
+    trip.update!(queued_for_track_uri: "spotify:track:playing")
+
+    stub_spotify(:get, "/me/player", body: {
+      "is_playing" => true, "progress_ms" => 190_000,
+      "item" => { "uri" => "spotify:track:playing", "duration_ms" => 200_000 }
+    })
+    queue_stub = stub_request(:post, "https://api.spotify.com/v1/me/player/queue")
+      .with(query: hash_including({})).to_return(status: 204)
+    next_stub = stub_request(:post, "https://api.spotify.com/v1/me/player/next").to_return(status: 204)
+
+    post skip_trip_playback_path(trip)
+
+    assert_not_requested queue_stub
+    assert_requested next_stub
+  end
+
+  test "skipping with nothing playing says so instead of failing" do
+    trip = active_trip_at(55.6761, 12.5683)
+    stub_spotify(:get, "/me/player", status: 204)
+
+    post skip_trip_playback_path(trip)
+
+    assert_match(/nothing is playing/i, flash[:alert])
+  end
+
+  test "the drive screen offers skip only while the trip is running" do
+    trip = active_trip_at(55.6761, 12.5683)
+
+    get drive_trip_path(trip)
+    assert_select "form[action='#{skip_trip_playback_path(trip)}']"
+
+    trip.update!(status: Trip::FINISHED)
+    get drive_trip_path(trip)
+    assert_select "form[action='#{skip_trip_playback_path(trip)}']", count: 0
+  end
+
   test "stopping finishes the trip" do
     @trip.update!(status: Trip::ACTIVE, started_at: Time.current)
 
@@ -168,6 +230,14 @@ class DrivingTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  # A trip already under way, with a recent fix at the given coordinates.
+  def active_trip_at(latitude, longitude)
+    @trip.update!(status: Trip::ACTIVE, started_at: Time.current)
+    @trip.trip_locations.create!(latitude: latitude, longitude: longitude,
+                                 accuracy: 8, recorded_at: Time.current)
+    @trip
+  end
 
   def sign_in_as(account)
     get spotify_auth_path

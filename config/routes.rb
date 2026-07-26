@@ -26,7 +26,9 @@ Rails.application.routes.draw do
       get :drive
     end
 
-    resource :playback, only: %i[create destroy], controller: "trips/playback"
+    resource :playback, only: %i[create destroy], controller: "trips/playback" do
+      post :skip
+    end
   end
 
   # Development-only. Never drawn in any other environment, and DevController

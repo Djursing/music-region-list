@@ -13,4 +13,7 @@ module Trips
   # Raised when the kommune's artist has no playable tracks at all — typically
   # a playlist whose tracks all failed to import.
   class NoTracksAvailable < StandardError; end
+
+  # Raised when an action needs something to be playing and nothing is.
+  class NotPlaying < StandardError; end
 end

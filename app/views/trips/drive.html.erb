@@ -23,6 +23,18 @@
 
   <%= render "trips/hud", trip: @trip, position: @position %>
 
+  <% if @trip.active? %>
+    <%# Large and full width: this is pressed while driving, so it needs to be
+        hittable without aiming. %>
+    <%= button_to skip_trip_playback_path(@trip), method: :post,
+          class: "flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-700 py-5 text-lg font-medium hover:border-neutral-500 active:bg-neutral-800" do %>
+      <span aria-hidden="true">⏭</span> Skip this song
+    <% end %>
+    <p class="text-center text-xs text-neutral-500">
+      Picks a replacement from the kommune you are in right now.
+    </p>
+  <% end %>
+
   <div class="space-y-2 rounded-lg border border-neutral-800 px-4 py-3 text-sm">
     <div class="flex items-center justify-between gap-4">
       <span class="text-neutral-500">Location</span>
